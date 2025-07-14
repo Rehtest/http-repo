@@ -1,5 +1,7 @@
 from enum import Enum
 
+from leafnode import LeafNode
+
 class TextType(Enum):
     """
     Enum representing different types of text nodes in a document.
@@ -44,3 +46,4 @@ class TextNode:
         Return a string representation of the TextNode.
         """
         return f"TextNode({self.text}, {self.text_type.value}, {self.url})"
+    

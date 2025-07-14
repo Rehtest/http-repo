@@ -7,8 +7,8 @@ class TestHTMLNode(unittest.TestCase):
         node = HTMLNode()
         self.assertEqual(node.tag, None)
         self.assertEqual(node.value, None)
-        self.assertEqual(node.children, None)
-        self.assertEqual(node.props, None)
+        self.assertEqual(node.children, [])
+        self.assertEqual(node.props, {})
 
     def test_init_with_values(self):
         children = [HTMLNode(tag="child1"), HTMLNode(tag="child2")]
@@ -21,5 +21,5 @@ class TestHTMLNode(unittest.TestCase):
 
     def test_repr(self):
         node = HTMLNode(tag="span", value="Hello", props={"style": "color: red"})
-        expected_repr = "HTMLNode(tag=span, value=Hello, children=None, props={'style': 'color: red'})"
+        expected_repr = "HTMLNode(tag=span, value=Hello, children=[], props={'style': 'color: red'})"
         self.assertEqual(repr(node), expected_repr)

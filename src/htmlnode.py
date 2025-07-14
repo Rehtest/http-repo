@@ -7,8 +7,8 @@ class HTMLNode:
                  props: Optional[Dict[str, str]] = None):
         self.tag = tag
         self.value = value
-        self.children = children
-        self.props = props
+        self.children: List['HTMLNode'] = children if children is not None else []
+        self.props: Dict[str, str] = props if props is not None else {}
 
     
     def to_html(self):
