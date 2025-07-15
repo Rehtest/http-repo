@@ -76,3 +76,97 @@ def extract_markdown_links(text):
     import re
     pattern = r"(?<!!)\[([^\[\]]*)\]\(([^\(\)]*)\)"
     return re.findall(pattern, text)
+
+
+def split_nodes_image(old_nodes):
+    """
+    Split nodes to extract images.
+    :old_nodes: The list of nodes to process.
+    :return: A new list of nodes with images extracted.
+    """
+    new_nodes = []
+    for node in old_nodes:
+        if node.text_type != TextType.TEXT:
+            # Only split TEXT type nodes
+            new_nodes.append(node)
+            continue
+            
+        # Extract all images from the text
+        images = extract_markdown_images(node.text)
+        if not images:
+            # No images found, keep the original node
+            new_nodes.append(node)
+            continue
+            
+        # Split the text by each image found
+        current_text = node.text
+        for alt_text, url in images:
+            # Create the full markdown image syntax
+            image_markdown = f"![{alt_text}]({url})"
+            
+            # Split the text at the first occurrence of this image
+            sections = current_text.split(image_markdown, 1)
+            
+            if len(sections) == 2:
+                # Add the text before the image (if not empty)
+                if sections[0]:
+                    new_nodes.append(TextNode(sections[0], TextType.TEXT))
+                
+                # Add the image node
+                new_nodes.append(TextNode(alt_text, TextType.IMAGE, url))
+                
+                # Continue with the remaining text
+                current_text = sections[1]
+        
+        # Add any remaining text after the last image
+        if current_text:
+            new_nodes.append(TextNode(current_text, TextType.TEXT))
+    
+    return new_nodes
+
+
+def split_nodes_link(old_nodes):
+    """
+    Split nodes to extract links.
+    :old_nodes: The list of nodes to process.
+    :return: A new list of nodes with links extracted.
+    """
+    new_nodes = []
+    for node in old_nodes:
+        if node.text_type != TextType.TEXT:
+            # Only split TEXT type nodes
+            new_nodes.append(node)
+            continue
+            
+        # Extract all links from the text
+        links = extract_markdown_links(node.text)
+        if not links:
+            # No links found, keep the original node
+            new_nodes.append(node)
+            continue
+            
+        # Split the text by each link found
+        current_text = node.text
+        for anchor_text, url in links:
+            # Create the full markdown link syntax
+            link_markdown = f"[{anchor_text}]({url})"
+            
+            # Split the text at the first occurrence of this link
+            sections = current_text.split(link_markdown, 1)
+            
+            if len(sections) == 2:
+                # Add the text before the link (if not empty)
+                if sections[0]:
+                    new_nodes.append(TextNode(sections[0], TextType.TEXT))
+                
+                # Add the link node
+                new_nodes.append(TextNode(anchor_text, TextType.LINK, url))
+                
+                # Continue with the remaining text
+                current_text = sections[1]
+        
+        # Add any remaining text after the last link
+        if current_text:
+            new_nodes.append(TextNode(current_text, TextType.TEXT))
+    
+    return new_nodes
