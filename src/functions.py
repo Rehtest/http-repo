@@ -78,6 +78,29 @@ def extract_markdown_links(text):
     return re.findall(pattern, text)
 
 
+def text_to_textnodes(text):
+    """
+    Convert raw markdown text to a list of TextNode objects.
+    :text: Raw markdown text string.
+    :return: List of TextNode objects with all markdown formatting parsed.
+    """
+    # Start with a single TEXT node containing the entire text
+    nodes = [TextNode(text, TextType.TEXT)]
+    
+    # Apply all splitting functions in sequence
+    # Order matters: bold (**) before italic (_) to avoid conflicts
+    nodes = split_nodes_delimiter(nodes, "**", TextType.BOLD)
+    nodes = split_nodes_delimiter(nodes, "_", TextType.ITALIC)
+    nodes = split_nodes_delimiter(nodes, "`", TextType.CODE)
+    nodes = split_nodes_image(nodes)
+    nodes = split_nodes_link(nodes)
+    
+    # Filter out empty text nodes
+    nodes = [node for node in nodes if not (node.text_type == TextType.TEXT and node.text == "")]
+    
+    return nodes
+
+
 def split_nodes_image(old_nodes):
     """
     Split nodes to extract images.
