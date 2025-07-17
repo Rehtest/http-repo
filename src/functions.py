@@ -101,6 +101,28 @@ def text_to_textnodes(text):
     return nodes
 
 
+def markdown_to_blocks(markdown):
+    """
+    Split markdown text into block-level sections.
+    :markdown: Raw markdown text string representing a full document.
+    :return: List of block strings, with blocks separated by blank lines.
+    """
+    # Split by double newlines (blank lines)
+    blocks = markdown.split("\n\n")
+    
+    # Strip whitespace from each block and filter out empty blocks
+    cleaned_blocks = []
+    for block in blocks:
+        stripped_block = block.strip()
+        if stripped_block:
+            # Strip trailing whitespace from each line within the block
+            lines = stripped_block.split('\n')
+            cleaned_lines = [line.rstrip() for line in lines]
+            cleaned_blocks.append('\n'.join(cleaned_lines))
+    
+    return cleaned_blocks
+
+
 def split_nodes_image(old_nodes):
     """
     Split nodes to extract images.
