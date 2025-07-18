@@ -1,6 +1,15 @@
 import re
+from enum import Enum
 from leafnode import LeafNode
 from textnode import TextType, TextNode
+
+class BlockType(Enum):
+    PARAGRAPH = "paragraph"
+    HEADING = "heading"
+    CODE = "code"
+    QUOTE = "quote"
+    UNORDERED_LIST = "unordered_list"
+    ORDERED_LIST = "ordered_list"
 
 def text_node_to_html_node(text_node) -> LeafNode:
     """
@@ -121,6 +130,57 @@ def markdown_to_blocks(markdown):
             cleaned_blocks.append('\n'.join(cleaned_lines))
     
     return cleaned_blocks
+
+
+def block_to_block_type(block):
+    """
+    Determine the type of a markdown block.
+    :block: A single block of markdown text (whitespace already stripped).
+    :return: BlockType enum representing the type of block.
+    """
+    lines = block.split('\n')
+    
+    # Check for heading (1-6 # characters followed by space)
+    if block.startswith('#'):
+        # Count leading # characters
+        hash_count = 0
+        for char in block:
+            if char == '#':
+                hash_count += 1
+            else:
+                break
+        
+        # Must be 1-6 # characters followed by a space
+        if 1 <= hash_count <= 6 and len(block) > hash_count and block[hash_count] == ' ':
+            return BlockType.HEADING
+    
+    # Check for code block (starts and ends with 3 backticks)
+    if block.startswith('```') and block.endswith('```') and len(block) >= 6:
+        return BlockType.CODE
+    
+    # Check for quote block (every line starts with >)
+    if all(line.startswith('>') for line in lines if line.strip()):
+        return BlockType.QUOTE
+    
+    # Check for unordered list (every line starts with "- ")
+    if all(line.startswith('- ') for line in lines if line.strip()):
+        return BlockType.UNORDERED_LIST
+    
+    # Check for ordered list (lines start with number. followed by space, incrementing from 1)
+    if lines and all(line.strip() for line in lines):  # All lines must be non-empty
+        is_ordered_list = True
+        for i, line in enumerate(lines):
+            expected_num = i + 1
+            expected_prefix = f"{expected_num}. "
+            if not line.startswith(expected_prefix):
+                is_ordered_list = False
+                break
+        
+        if is_ordered_list:
+            return BlockType.ORDERED_LIST
+    
+    # Default to paragraph
+    return BlockType.PARAGRAPH
 
 
 def split_nodes_image(old_nodes):
