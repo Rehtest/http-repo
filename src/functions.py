@@ -1,6 +1,7 @@
 import re
 from enum import Enum
 from leafnode import LeafNode
+from parentnode import ParentNode
 from textnode import TextType, TextNode
 
 class BlockType(Enum):
@@ -28,7 +29,7 @@ def text_node_to_html_node(text_node) -> LeafNode:
     if text_node.text_type == TextType.LINK:
         return LeafNode(tag="a", value=text_node.text, props={"href": text_node.url})
     elif text_node.text_type == TextType.IMAGE:
-        return LeafNode(tag="img", props={"src": text_node.url, "alt": text_node.text})
+        return LeafNode(tag="img", value="", props={"src": text_node.url, "alt": text_node.text})
     else:
         raise Exception(f"Unsupported text type: {text_node.text_type}")
     
@@ -275,3 +276,182 @@ def split_nodes_link(old_nodes):
             new_nodes.append(TextNode(current_text, TextType.TEXT))
     
     return new_nodes
+
+
+def text_to_children(text):
+    """
+    Convert markdown text to a list of HTMLNode children.
+    :text: Raw markdown text string.
+    :return: List of HTMLNode objects with inline formatting.
+    """
+    text_nodes = text_to_textnodes(text)
+    children = []
+    for text_node in text_nodes:
+        html_node = text_node_to_html_node(text_node)
+        children.append(html_node)
+    return children
+
+
+def paragraph_to_html_node(block):
+    """
+    Convert a paragraph block to an HTMLNode.
+    :block: The paragraph block text.
+    :return: ParentNode representing a <p> tag.
+    """
+    # Replace newlines with spaces for paragraphs
+    text = block.replace('\n', ' ')
+    children = text_to_children(text)
+    return ParentNode("p", children)
+
+
+def heading_to_html_node(block):
+    """
+    Convert a heading block to an HTMLNode.
+    :block: The heading block text.
+    :return: ParentNode representing an <h1>-<h6> tag.
+    """
+    # Count the number of # characters
+    hash_count = 0
+    for char in block:
+        if char == '#':
+            hash_count += 1
+        else:
+            break
+    
+    # Extract the heading text (after the # and space)
+    heading_text = block[hash_count + 1:]  # +1 to skip the space
+    children = text_to_children(heading_text)
+    return ParentNode(f"h{hash_count}", children)
+
+
+def code_to_html_node(block):
+    """
+    Convert a code block to an HTMLNode.
+    :block: The code block text.
+    :return: ParentNode representing a <pre><code> structure.
+    """
+    # Remove the opening and closing ```
+    code_content = block[3:-3]  # Remove first 3 and last 3 characters
+    
+    # Strip leading/trailing newlines but preserve internal newlines
+    code_content = code_content.strip('\n')
+    
+    # For code blocks, we don't parse inline markdown
+    code_text_node = TextNode(code_content, TextType.TEXT)
+    code_html_node = text_node_to_html_node(code_text_node)
+    
+    code_node = ParentNode("code", [code_html_node])
+    return ParentNode("pre", [code_node])
+
+
+def quote_to_html_node(block):
+    """
+    Convert a quote block to an HTMLNode.
+    :block: The quote block text.
+    :return: ParentNode representing a <blockquote> tag.
+    """
+    lines = block.split('\n')
+    # Remove the '> ' from each line
+    quote_lines = []
+    for line in lines:
+        if line.startswith('> '):
+            quote_lines.append(line[2:])  # Remove '> '
+        elif line.startswith('>'):
+            quote_lines.append(line[1:])  # Remove '>'
+        else:
+            quote_lines.append(line)
+    
+    quote_text = '\n'.join(quote_lines)
+    children = text_to_children(quote_text)
+    return ParentNode("blockquote", children)
+
+
+def unordered_list_to_html_node(block):
+    """
+    Convert an unordered list block to an HTMLNode.
+    :block: The unordered list block text.
+    :return: ParentNode representing a <ul> tag with <li> children.
+    """
+    lines = block.split('\n')
+    list_items = []
+    
+    for line in lines:
+        if line.startswith('- '):
+            item_text = line[2:]  # Remove '- '
+            item_children = text_to_children(item_text)
+            list_item = ParentNode("li", item_children)
+            list_items.append(list_item)
+    
+    return ParentNode("ul", list_items)
+
+
+def ordered_list_to_html_node(block):
+    """
+    Convert an ordered list block to an HTMLNode.
+    :block: The ordered list block text.
+    :return: ParentNode representing an <ol> tag with <li> children.
+    """
+    lines = block.split('\n')
+    list_items = []
+    
+    for i, line in enumerate(lines):
+        expected_prefix = f"{i + 1}. "
+        if line.startswith(expected_prefix):
+            item_text = line[len(expected_prefix):]  # Remove '1. ', '2. ', etc.
+            item_children = text_to_children(item_text)
+            list_item = ParentNode("li", item_children)
+            list_items.append(list_item)
+    
+    return ParentNode("ol", list_items)
+
+
+class EmptyParentNode(ParentNode):
+    """Special ParentNode that can be empty (for divs with no content)"""
+    def to_html(self) -> str:
+        if not self.tag:
+            raise ValueError("ParentNode must have a tag to convert to HTML")
+        props_html = self.props_to_html()
+        if not self.children:
+            return f"<{self.tag}{props_html}></{self.tag}>"
+        children_html = "".join(child.to_html() for child in self.children)
+        return f"<{self.tag}{props_html}>{children_html}</{self.tag}>"
+
+
+def markdown_to_html_node(markdown):
+    """
+    Convert a full markdown document into a single parent HTMLNode.
+    :markdown: Raw markdown text string representing a full document.
+    :return: ParentNode representing a <div> containing all block elements.
+    """
+    # Split markdown into blocks
+    blocks = markdown_to_blocks(markdown)
+    
+    # If no blocks, return empty div
+    if not blocks:
+        return EmptyParentNode("div", [])
+    
+    # Convert each block to an HTMLNode
+    block_nodes = []
+    for block in blocks:
+        block_type = block_to_block_type(block)
+        
+        if block_type == BlockType.PARAGRAPH:
+            block_node = paragraph_to_html_node(block)
+        elif block_type == BlockType.HEADING:
+            block_node = heading_to_html_node(block)
+        elif block_type == BlockType.CODE:
+            block_node = code_to_html_node(block)
+        elif block_type == BlockType.QUOTE:
+            block_node = quote_to_html_node(block)
+        elif block_type == BlockType.UNORDERED_LIST:
+            block_node = unordered_list_to_html_node(block)
+        elif block_type == BlockType.ORDERED_LIST:
+            block_node = ordered_list_to_html_node(block)
+        else:
+            # Default to paragraph for unknown types
+            block_node = paragraph_to_html_node(block)
+        
+        block_nodes.append(block_node)
+    
+    # Wrap all blocks in a single parent div
+    return ParentNode("div", block_nodes)
