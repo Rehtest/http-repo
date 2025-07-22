@@ -455,3 +455,72 @@ def markdown_to_html_node(markdown):
     
     # Wrap all blocks in a single parent div
     return ParentNode("div", block_nodes)
+
+
+def extract_title(markdown):
+    """
+    Extract the h1 header from a markdown string.
+    
+    Args:
+        markdown (str): The markdown content to extract title from
+        
+    Returns:
+        str: The title text without the # symbol and stripped of whitespace
+        
+    Raises:
+        ValueError: If no h1 header is found
+    """
+    lines = markdown.split('\n')
+    
+    for line in lines:
+        stripped_line = line.strip()
+        if stripped_line.startswith('# ') and not stripped_line.startswith('## '):
+            # Found h1 header - extract the title
+            title = stripped_line[2:].strip()  # Remove '# ' and strip whitespace
+            if title:  # Make sure there's actual content after the #
+                return title
+    
+    # No h1 header found
+    raise ValueError("No h1 header found in markdown")
+
+
+def generate_page(from_path, template_path, dest_path):
+    """
+    Generate an HTML page from markdown content using a template.
+    
+    Args:
+        from_path (str): Path to the markdown file
+        template_path (str): Path to the HTML template file
+        dest_path (str): Path where the generated HTML should be saved
+    """
+    import os
+    
+    print(f"Generating page from {from_path} to {dest_path} using {template_path}")
+    
+    # Read the markdown file
+    with open(from_path, 'r', encoding='utf-8') as f:
+        markdown_content = f.read()
+    
+    # Read the template file
+    with open(template_path, 'r', encoding='utf-8') as f:
+        template_content = f.read()
+    
+    # Convert markdown to HTML
+    html_node = markdown_to_html_node(markdown_content)
+    html_content = html_node.to_html()
+    
+    # Extract the title
+    title = extract_title(markdown_content)
+    
+    # Replace placeholders in the template
+    final_html = template_content.replace("{{ Title }}", title)
+    final_html = final_html.replace("{{ Content }}", html_content)
+    
+    # Create the destination directory if it doesn't exist
+    dest_dir = os.path.dirname(dest_path)
+    if dest_dir and not os.path.exists(dest_dir):
+        os.makedirs(dest_dir)
+    
+    # Write the final HTML to the destination file
+    with open(dest_path, 'w', encoding='utf-8') as f:
+        f.write(final_html)
