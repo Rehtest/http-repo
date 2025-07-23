@@ -484,7 +484,7 @@ def extract_title(markdown):
     raise ValueError("No h1 header found in markdown")
 
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, basepath="/"):
     """
     Generate an HTML page from markdown content using a template.
     
@@ -492,6 +492,7 @@ def generate_page(from_path, template_path, dest_path):
         from_path (str): Path to the markdown file
         template_path (str): Path to the HTML template file
         dest_path (str): Path where the generated HTML should be saved
+        basepath (str): Base path for links in the generated HTML (e.g., "/" or "/repo-name/")
     """
     import os
     
@@ -515,6 +516,10 @@ def generate_page(from_path, template_path, dest_path):
     # Replace placeholders in the template
     final_html = template_content.replace("{{ Title }}", title)
     final_html = final_html.replace("{{ Content }}", html_content)
+    
+    # Replace absolute links with basepath
+    final_html = final_html.replace('href="/', f'href="{basepath}')
+    final_html = final_html.replace('src="/', f'src="{basepath}')
     
     # Create the destination directory if it doesn't exist
     dest_dir = os.path.dirname(dest_path)
